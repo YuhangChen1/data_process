@@ -1,0 +1,566 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kosmoworld:scene_graph:0.1",
+  "title": "KosmoWorld automatic scene graph 0.1",
+  "type": "object",
+  "required": [
+    "schema",
+    "schema_version",
+    "scene_id",
+    "frame",
+    "units",
+    "geometry_source",
+    "scene",
+    "floors",
+    "regions",
+    "connections",
+    "objects",
+    "texts",
+    "issues",
+    "generation"
+  ],
+  "properties": {
+    "schema": {
+      "const": "kosmoworld.scene_graph"
+    },
+    "schema_version": {
+      "const": "0.1"
+    },
+    "scene_id": {
+      "type": "string"
+    },
+    "frame": {
+      "const": "canonical"
+    },
+    "units": {
+      "const": "inferred_meter"
+    },
+    "geometry_source": {
+      "type": "object",
+      "required": [
+        "analysis_sha256",
+        "analysis_path",
+        "world_to_canonical"
+      ]
+    },
+    "scene": {
+      "$ref": "#/$defs/scene"
+    },
+    "floors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/floor"
+      }
+    },
+    "regions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/region"
+      }
+    },
+    "connections": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/connection"
+      }
+    },
+    "objects": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/object"
+      }
+    },
+    "texts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/text"
+      }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/issue"
+      }
+    },
+    "generation": {
+      "type": "object",
+      "required": [
+        "human_review_applied"
+      ],
+      "properties": {
+        "human_review_applied": {
+          "const": false
+        }
+      }
+    }
+  },
+  "$defs": {
+    "scored": {
+      "type": "object",
+      "required": [
+        "score",
+        "source"
+      ],
+      "properties": {
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "entity": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/scored"
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "review"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 2
+            },
+            "review": {
+              "type": "object",
+              "required": [
+                "status"
+              ],
+              "properties": {
+                "status": {
+                  "const": "unreviewed"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "scene": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/entity"
+        },
+        {
+          "type": "object",
+          "required": [
+            "type_pred",
+            "scale_check"
+          ],
+          "properties": {
+            "type_pred": {
+              "$ref": "#/$defs/scored"
+            },
+            "scale_check": {
+              "$ref": "#/$defs/scored"
+            }
+          }
+        }
+      ]
+    },
+    "floor": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/entity"
+        },
+        {
+          "type": "object",
+          "required": [
+            "z_floor",
+            "z_ceiling",
+            "region_ids",
+            "navigable_area",
+            "n_components"
+          ],
+          "properties": {
+            "z_floor": {
+              "type": "number"
+            },
+            "z_ceiling": {
+              "type": "number"
+            },
+            "region_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "navigable_area": {
+              "type": "number",
+              "minimum": 0
+            },
+            "n_components": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      ]
+    },
+    "region": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/entity"
+        },
+        {
+          "type": "object",
+          "required": [
+            "floor",
+            "polygon",
+            "geometry",
+            "area",
+            "center",
+            "type_pred",
+            "panorama",
+            "object_ids",
+            "name_auto"
+          ],
+          "properties": {
+            "floor": {
+              "type": "string"
+            },
+            "polygon": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            "geometry": {
+              "type": "object",
+              "required": [
+                "type",
+                "coordinates"
+              ],
+              "properties": {
+                "type": {
+                  "enum": [
+                    "Polygon",
+                    "MultiPolygon"
+                  ]
+                }
+              }
+            },
+            "area": {
+              "type": "number",
+              "minimum": 0
+            },
+            "center": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "type_pred": {
+              "$ref": "#/$defs/scored"
+            },
+            "panorama": {
+              "type": "string"
+            },
+            "object_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "name_auto": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "connection": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/entity"
+        },
+        {
+          "type": "object",
+          "required": [
+            "regions",
+            "type_pred",
+            "position",
+            "width",
+            "connected_in_map",
+            "method"
+          ],
+          "properties": {
+            "regions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "type_pred": {
+              "$ref": "#/$defs/scored"
+            },
+            "position": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "width": {
+              "type": "number",
+              "minimum": 0
+            },
+            "connected_in_map": {
+              "type": "boolean"
+            },
+            "method": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "object": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/entity"
+        },
+        {
+          "type": "object",
+          "required": [
+            "floor",
+            "region",
+            "category_pred",
+            "bbox",
+            "n_views",
+            "attributes_pred",
+            "relations_auto",
+            "best_view",
+            "points_ref",
+            "geometry_pred",
+            "view_evidence"
+          ],
+          "properties": {
+            "floor": {
+              "type": "string"
+            },
+            "region": {
+              "type": "string"
+            },
+            "category_pred": {
+              "$ref": "#/$defs/scored"
+            },
+            "bbox": {
+              "allOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "center",
+                    "size",
+                    "yaw_deg"
+                  ],
+                  "properties": {
+                    "center": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 3,
+                      "maxItems": 3
+                    },
+                    "size": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 3,
+                      "maxItems": 3
+                    },
+                    "yaw_deg": {
+                      "const": 0
+                    }
+                  }
+                }
+              ]
+            },
+            "n_views": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "attributes_pred": {
+              "$ref": "#/$defs/scored"
+            },
+            "geometry_pred": {
+              "$ref": "#/$defs/scored"
+            },
+            "relations_auto": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation"
+              }
+            },
+            "best_view": {
+              "type": "string"
+            },
+            "points_ref": {
+              "type": "object",
+              "required": [
+                "path",
+                "key"
+              ]
+            },
+            "view_evidence": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/scored"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "relation": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/scored"
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "target",
+            "review"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "near",
+                "on",
+                "above",
+                "below",
+                "near_connection"
+              ]
+            },
+            "target": {
+              "type": "string"
+            },
+            "review": {
+              "const": {
+                "status": "unreviewed"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "text": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/entity"
+        },
+        {
+          "type": "object",
+          "required": [
+            "level",
+            "ref",
+            "length",
+            "text",
+            "visibility_default",
+            "grounded_on"
+          ],
+          "properties": {
+            "level": {
+              "enum": [
+                "scene",
+                "region",
+                "object"
+              ]
+            },
+            "ref": {
+              "type": "string"
+            },
+            "length": {
+              "enum": [
+                "short",
+                "long"
+              ]
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1
+            },
+            "visibility_default": {
+              "enum": [
+                "public",
+                "private"
+              ]
+            },
+            "grounded_on": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "issue": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/scored"
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "ref",
+            "detail",
+            "review"
+          ],
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "ref": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ]
+            },
+            "detail": {
+              "type": "string"
+            },
+            "review": {
+              "const": {
+                "status": "unreviewed"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

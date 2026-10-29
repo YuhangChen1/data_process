@@ -1,0 +1,19 @@
+# Data lives on CFS, not in git (raw scans, geometry, annotations, evaluation cases and renders)
+/hesai_dataset
+/model
+/.deps
+/sources/
+/outputs/
+/auto/
+/scenes/
+/evaluate1/cases/
+/evaluate1/runs/
+
+# Machine-local settings (gateway URL, SSH key path) and runtime state
+/services/global_settings.local.json
+/services/vlm_request_slots/
+/services/*.lock
+/tools/local.env
+
+__pycache__/
+*.pyc

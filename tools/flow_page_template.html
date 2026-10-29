@@ -1,0 +1,222 @@
+<title>anno_eval 管线图</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<style>
+/* layout: a wide schematic of the whole pipeline on top (scrolls sideways on phones), then the interface reference
+   stage by stage, then the 72 evaluation operators. Teal = anno_eval operators, ochre = upstream / external. */
+:root {
+  --bg: #f2f4f3; --surface: #ffffff; --node: #ffffff; --fg: #16201d; --muted: #586763; --line: #cbd4d1;
+  --accent: #0e6c63; --accent-bg: #e3f1ee; --ext: #9a5d18; --ext-bg: #fbf3e8; --gpu: #345392; --gpu-bg: #e7edf8;
+  --gpt: #6f4290; --gpt-bg: #f1e9f6; --ok: #2c7a3f; --na: #7a7f7d;
+  --sans: "Noto Sans SC", "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111715; --surface: #18201e; --node: #1b2422; --fg: #e2eae7; --muted: #95a49f; --line: #34433f;
+  --accent: #4cc0b0; --accent-bg: #16302c; --ext: #e2a457; --ext-bg: #2c2214; --gpu: #93acec; --gpu-bg: #1b2440;
+  --gpt: #c79ce4; --gpt-bg: #2a1d35; --ok: #6fcf86; --na: #8b918f; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111715; --surface: #18201e; --node: #1b2422; --fg: #e2eae7; --muted: #95a49f; --line: #34433f;
+  --accent: #4cc0b0; --accent-bg: #16302c; --ext: #e2a457; --ext-bg: #2c2214; --gpu: #93acec; --gpu-bg: #1b2440;
+  --gpt: #c79ce4; --gpt-bg: #2a1d35; --ok: #6fcf86; --na: #8b918f; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font: 15px/1.65 var(--sans); }
+.wrap { max-width: 1280px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 64px; }
+h1 { font-size: 30px; line-height: 1.2; margin: 0 0 8px; letter-spacing: .01em; text-wrap: balance; }
+h2 { font-size: 20px; margin: 0 0 4px; text-wrap: balance; }
+h3 { font-size: 15px; margin: 0; }
+p { margin: 0; max-width: 68ch; }
+code, .mono { font-family: var(--mono); font-size: .86em; }
+.lede { color: var(--muted); }
+.stats { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 14px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stats b { color: var(--fg); font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px 18px; margin: 20px 0 10px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 22px; height: 12px; border-radius: 3px; border: 1.5px solid; display: inline-block; }
+.sw.op { border-color: var(--accent); background: var(--node); }
+.sw.ext { border-color: var(--ext); background: var(--ext-bg); }
+.sw.opt { border-color: var(--accent); border-style: dashed; background: var(--node); }
+figure { margin: 0; }
+.flowwrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+svg.flow { display: block; width: 100%; min-width: 1080px; height: auto; color: var(--muted); }
+.flow rect.n { fill: var(--node); stroke: var(--line); stroke-width: 1.4; }
+.flow rect.n.op, .flow polygon.n.cond { stroke: var(--accent); }
+.flow polygon.n.cond { fill: var(--accent-bg); stroke-width: 1.4; }
+.flow rect.n.ext { stroke: var(--ext); fill: var(--ext-bg); }
+.flow rect.n.opt { stroke: var(--accent); stroke-dasharray: 5 4; }
+.flow .nt { font: 600 13px var(--sans); fill: var(--fg); }
+.flow .ns { font: 11px var(--mono); fill: var(--muted); }
+.flow .ch { font: 600 13px var(--sans); fill: var(--muted); letter-spacing: .06em; }
+.flow .e { fill: none; stroke: var(--muted); stroke-width: 1.3; }
+.flow .e.dash { stroke-dasharray: 5 4; }
+.flow .el { font: 11px var(--sans); fill: var(--muted); }
+.flow a.nl:hover rect, .flow a.nl:focus-visible rect { stroke-width: 2.6; }
+.flow a.nl:focus { outline: none; }
+figcaption { margin-top: 10px; font-size: 13px; color: var(--muted); max-width: 100ch; }
+section { margin-top: 44px; }
+.sechead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 14px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.sechead .sub { color: var(--muted); font-size: 13px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; display: grid; gap: 8px; align-content: start; scroll-margin-top: 16px; }
+.card.ext { border-left: 4px solid var(--ext); }
+.card.op { border-left: 4px solid var(--accent); }
+.card:target { box-shadow: 0 0 0 2px var(--accent); }
+.card .name { font-family: var(--mono); font-size: 13px; color: var(--accent); }
+.card.ext .name { color: var(--ext); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 11.5px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.chip.gpu { color: var(--gpu); background: var(--gpu-bg); border-color: transparent; }
+.chip.gpt { color: var(--gpt); background: var(--gpt-bg); border-color: transparent; }
+.chip.cpu { color: var(--muted); }
+.chip.when { color: var(--accent); background: var(--accent-bg); border-color: transparent; }
+.chip.owner { color: var(--ext); background: var(--ext-bg); border-color: transparent; }
+.io { display: grid; grid-template-columns: 3.2em 1fr; gap: 4px 8px; font-size: 13px; }
+.io .k { color: var(--muted); }
+.io ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; min-width: 0; }
+.io li { font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+.io li::before { content: "▸ "; color: var(--line); }
+.doc { font-size: 13px; color: var(--muted); }
+.call { font-family: var(--mono); font-size: 12px; background: var(--bg); border-radius: 6px; padding: 4px 8px; overflow-wrap: anywhere; }
+.schema { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 500; }
+td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mgroup { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.mgroup h3 { display: flex; gap: 10px; align-items: baseline; }
+.mgroup h3 .code { font-family: var(--mono); color: var(--accent); }
+.mgroup h3 .n { color: var(--muted); font-weight: 400; font-size: 12px; }
+.mgroup .need { font-size: 12px; color: var(--muted); margin: 4px 0 8px; }
+.mgroup .tbl { overflow-x: auto; }
+.st-ok { color: var(--ok); }
+.st-na { color: var(--na); }
+.conv { display: grid; gap: 6px; font-size: 14px; }
+.conv b { font-weight: 600; }
+@media (max-width: 560px) { h1 { font-size: 24px; } .wrap { padding-inline: 16px; } }
+@media (prefers-reduced-motion: no-preference) { .card { transition: box-shadow .2s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>anno_eval 管线图</h1>
+    <p class="lede">海塞扫描和董婷的漫游输出进入 3D 几何与轨迹，再经过 3D 标注，最后和被测 4DGS 一起进入评测。图中每个方框是一个算子，点击方框可以跳到它的接口：输入什么、输出什么、在哪类设备上跑、什么条件下才运行。</p>
+    <div class="stats">
+      <span><b>{{N_OPS}}</b> 个管线算子（<code>ops3d.py</code>）</span>
+      <span><b>{{N_EXT}}</b> 个上游外部块</span>
+      <span><b>{{N_METRICS}}</b> 个评测算子（<code>operators.py</code>）</span>
+      <span>试点 <code>{{SCENE}}</code> 图书阅览室 · {{PILOT}}</span>
+    </div>
+  </header>
+
+  <div class="legend">
+    <span><i class="sw ext"></i>上游 / 外部（海塞、董婷、被测模型）</span>
+    <span><i class="sw op"></i>anno_eval 算子</span>
+    <span><i class="sw opt"></i>可选（WITH_TEXT=1）</span>
+    <span>虚线箭头 = 可选或未使用的数据流</span>
+  </div>
+
+  <figure>
+    <div class="flowwrap"><!--SVG--></div>
+    <figcaption>数据从左往右流。有一个分支：扫描自带漫游（90 个场景里有 86 个）时，直接对齐董婷的 <code>poses.json</code> 和 <code>frames_hd</code>；没有时才在可通行图上用 A* 规划漫游。标注帧和评测轨迹都来自这条轨迹，所以每个评测步都能找到对应的实例标签。</figcaption>
+  </figure>
+
+  <div id="stages"></div>
+
+  <section id="eval">
+    <div class="sechead"><h2>72 个评测算子</h2><span class="sub">统一接口 <code>fn(ctx: EvalContext) → Result</code>，由 <code>eval.score</code> 全部执行，不做筛选</span></div>
+    <p class="doc" style="margin-bottom:14px">每个算子只读取它声明的 ctx 字段。case 提供不了所需输入时（例如静态场景没有主体）返回 <code>n/a</code> 并写明原因；运行出错时返回 <code>error</code> 并附 traceback，不会中断整次评测。WBench 的 MegaSaM 位姿会作为 <code>c2w_est</code> 交给重访漂移算子。右列是试点 oracle（扫描原始 3DGS，作为上界）的结果。</p>
+    <div class="grid" style="margin-bottom:18px">
+      <div class="card op">
+        <h3>输入：EvalContext</h3>
+        <div class="schema"><table>
+          <tr><th>字段</th><th>来源</th></tr>
+          <tr><td class="num">frames [T,H,W,3]</td><td>被测模型按每一步渲染的画面</td></tr>
+          <tr><td class="num">c2w_cmd, K, fps</td><td>case 的 cameras.npz（指令轨迹）</td></tr>
+          <tr><td class="num">input_index, input_gt</td><td>10 个输入步及其真值帧</td></tr>
+          <tr><td class="num">keypoints, turns, actions</td><td>6 个关键点的出发/返回步与 3+3 动作</td></tr>
+          <tr><td class="num">pairs</td><td>关键点重访对 + R2M revisit / baseline / short 配对</td></tr>
+          <tr><td class="num">objects</td><td>关键点处的标注物体 mask（来自 3D 标注）</td></tr>
+          <tr><td class="num">depth, c2w_est</td><td>可选：模型深度；MegaSaM 估计轨迹</td></tr>
+          <tr><td class="num">scene_text, setting</td><td>GPT 写的场景描述（设定遵循类用）</td></tr>
+        </table></div>
+      </div>
+      <div class="card op">
+        <h3>输出：Result（写入 scores.json）</h3>
+        <div class="schema"><table>
+          <tr><th>字段</th><th>含义</th></tr>
+          <tr><td class="num">value</td><td>标量分数（WBench 类为 0–100，R2M 类为 NMR）</td></tr>
+          <tr><td class="num">status</td><td>ok / n/a / error</td></tr>
+          <tr><td class="num">unit, higher_is_better</td><td>单位与方向</td></tr>
+          <tr><td class="num">raw</td><td>中间量：MG、各配对组均值、对齐尺度等</td></tr>
+          <tr><td class="num">per_item</td><td>逐帧 / 逐关键点 / 逐配对的值</td></tr>
+          <tr><td class="num">note, seconds</td><td>n/a 或代用说明；耗时</td></tr>
+        </table></div>
+      </div>
+    </div>
+    <div class="grid" id="metrics"></div>
+  </section>
+
+  <section>
+    <div class="sechead"><h2>约定</h2></div>
+    <div class="conv">
+      <p><b>坐标</b>：扫描原始坐标 −Y 朝上（gaussian.ply、mesh、董婷的 poses.json）；管线内部统一到调平后的 canonical Z 朝上坐标系，变换矩阵在 <code>analysis.json:world_to_canonical</code>。cameras.npz 同时给出 <code>c2w_source</code> 和 <code>c2w_canonical</code>。</p>
+      <p><b>相机</b>：OpenCV 约定（+X 右、+Y 下、+Z 前），矩阵是相机到世界；像素中心在 (u+.5, v+.5)。</p>
+      <p><b>单位</b>：推断米制（按层高推断，没有独立标定）。深度 PNG 是 uint16 毫米，0 表示无效。</p>
+      <p><b>ID</b>：global ID 唯一来源是 <code>fine_instances.npz:point_fine_ids</code>，0 表示未知；剔除的碎片记录在 <code>global_instances.json:dropped_instances</code>。</p>
+      <p><b>模型</b>：GPT 调用统一使用 gpt-6.1-sol；分割使用 SAM3；评测用到 MegaSaM、DA3、DINOv2、CLIP、LPIPS、DreamSim、GroundingDINO、SAM2、LightGlue 等，权重全部离线读取。</p>
+    </div>
+  </section>
+</div>
+
+<script>
+const DATA = /*DATA*/;
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const DEV = { cpu: 'CPU', gpu: 'GPU', gpt: 'GPT（gpt-6.1-sol）' };
+
+function opCard(o) {
+  const c = el('article', 'card ' + (o.external ? 'ext' : 'op')); c.id = 'op-' + o.name;
+  const head = el('div'); head.append(el('div', 'name', o.name), el('h3', null, o.title)); c.append(head);
+  const chips = el('div', 'chips');
+  if (o.external) chips.append(el('span', 'chip owner', '外部 · ' + o.owner));
+  chips.append(el('span', 'chip ' + o.device, DEV[o.device] || o.device));
+  if (o.when && o.when !== 'always') chips.append(el('span', 'chip when', '条件：' + o.when));
+  c.append(chips);
+  const io = el('div', 'io');
+  [['输入', o.inputs], ['输出', o.outputs]].forEach(([k, xs]) => {
+    io.append(el('span', 'k', k)); const ul = el('ul');
+    (xs.length ? xs : ['—']).forEach(x => ul.append(el('li', null, x))); io.append(ul);
+  });
+  c.append(io);
+  if (o.call && o.call !== '—') c.append(el('div', 'call', o.call));
+  if (o.doc) c.append(el('p', 'doc', o.doc));
+  return c;
+}
+
+const stages = document.getElementById('stages');
+DATA.stages.forEach(st => {
+  const ops = DATA.ops.filter(o => o.stage === st); if (!ops.length) return;
+  const sec = el('section'); sec.id = 'stage-' + st;
+  const h = el('div', 'sechead'); h.append(el('h2', null, DATA.stage_zh[st]), el('span', 'sub', ops.length + ' 个' + (st === 'upstream' ? '外部块，只记录接口，不在 anno_eval 里运行' : '算子')));
+  const g = el('div', 'grid'); ops.forEach(o => g.append(opCard(o)));
+  sec.append(h, g); stages.append(sec);
+});
+
+const fmt = v => (typeof v === 'number') ? (Math.abs(v) >= 1000 || (Math.abs(v) < 1e-3 && v !== 0) ? v.toExponential(2) : (+v.toPrecision(4)).toString()) : '—';
+const metrics = document.getElementById('metrics');
+DATA.groups.forEach(gr => {
+  const box = el('div', 'mgroup');
+  const h = el('h3'); h.append(el('span', 'code', gr.code), el('span', null, gr.title), el('span', 'n', gr.ops.length + ' 个'));
+  const need = new Set(); gr.ops.forEach(o => o.inputs.forEach(i => need.add(i)));
+  box.append(h, el('div', 'need', '需要：' + [...need].join(' · ')));
+  const t = el('table'); const tr = el('tr'); ['算子', '含义', '', '试点'].forEach(x => tr.append(el('th', null, x))); t.append(tr);
+  gr.ops.forEach(o => {
+    const r = el('tr');
+    const n = el('td', 'num', o.name.replace(/^(wbench|fidelity|revisit|r2m)\./, ''));
+    const d = el('td', null, o.zh);
+    const dir = el('td', 'num', o.hib ? '↑' : '↓');
+    const v = el('td', 'num ' + (o.status === 'ok' ? 'st-ok' : 'st-na'), o.status === 'ok' ? fmt(o.value) : (o.status || '—'));
+    r.append(n, d, dir, v); t.append(r);
+  });
+  const wrapT = el('div', 'tbl'); wrapT.append(t); box.append(wrapT); metrics.append(box);
+});
+</script>

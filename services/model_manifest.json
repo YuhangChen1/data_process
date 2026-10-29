@@ -1,0 +1,39 @@
+{
+  "checkpoint_path": "/mnt/cfs/cyh/cvpr_ws/model/sam3.pt",
+  "checkpoint_sha256": "9999e2341ceef5e136daa386eecb55cb414446a00ac2b55eb2dfd2f7c3cf8c9e",
+  "sam3_repository": "https://github.com/facebookresearch/sam3",
+  "sam3_code_sha256": "60cef72b1f7e4a2162d1c3f1ad2c0451bbbdc10e3484433a9aa2d016fed6b448",
+  "python_packages": {
+    "torch": "2.5.1+cu121",
+    "torchvision": "0.20.1+cu121",
+    "numpy": "1.26.4",
+    "scipy": "1.17.1",
+    "open3d": "0.18.0",
+    "opencv-python": "4.11.0.86",
+    "pillow": "12.3.0",
+    "requests": "2.32.3",
+    "fastapi": "0.141.1",
+    "uvicorn": "0.52.3",
+    "jsonschema": "4.26.0",
+    "playwright": "1.63.0",
+    "timm": "1.0.29",
+    "iopath": "0.1.9",
+    "einops": "0.8.2",
+    "ftfy": "6.3.1",
+    "huggingface-hub": "0.36.2"
+  },
+  "local_dependencies": {
+    "sam3_source": ".deps/sam3",
+    "shapely": ".deps/python",
+    "global_transformers_used_for_sam3": false
+  },
+  "python_version": "3.11.9 (main, Aug 14 2024, 05:07:28) [Clang 18.1.8 ]",
+  "inference_environment": {
+    "sam3_gpu_physical_index": 2,
+    "precision": "bfloat16 autocast",
+    "threads": 4
+  },
+  "sam3_python_tree_sha256": "4a95f4874171df1ae9d3efdee28878078715803a5ed3a2bd02d7fb38534b3e22",
+  "sam3_python_file_count": 152,
+  "sam3_source_files_manifest": "services/sam3_source_files.json"
+}

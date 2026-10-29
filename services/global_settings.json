@@ -1,0 +1,7 @@
+{
+  "gpt_request_model": "gpt-6.1-sol",
+  "vlm_max_concurrent": 8,
+  "audit_workers": 8,
+  "description_workers": 6,
+  "vlm_stream": false
+}

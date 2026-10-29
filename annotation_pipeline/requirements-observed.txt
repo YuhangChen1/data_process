@@ -1,0 +1,19 @@
+# Observed working environment. Do not upgrade shared packages blindly.
+torch==2.5.1+cu121
+torchvision==0.20.1+cu121
+numpy==1.26.4
+scipy==1.17.1
+open3d==0.18.0
+opencv-python==4.11.0.86
+pillow==12.3.0
+requests==2.32.3
+fastapi==0.141.1
+uvicorn==0.52.3
+jsonschema==4.26.0
+playwright==1.63.0
+timm==1.0.29
+iopath==0.1.9
+einops==0.8.2
+ftfy==6.3.1
+huggingface-hub==0.36.2
+# SAM3 official source: ../.deps/sam3; Shapely installed at ../.deps/python

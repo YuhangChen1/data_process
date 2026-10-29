@@ -1,0 +1,269 @@
+{
+  "schema": "data_pipeline.scene_manifest.v1",
+  "created": "2026-10-29 14:01:10",
+  "summary": {
+    "scene_id": "KS-IN-OE-S-F1_01_202609121414",
+    "label_zh": "图书阅览室",
+    "category_path": [
+      "办公或教育空间",
+      "教育科研"
+    ],
+    "floors": [
+      {
+        "floor_id": 0,
+        "height": -1.312,
+        "ceiling_gap": 2.77,
+        "navigable_area_m2": 155.3
+      }
+    ],
+    "walkthrough_floor_check": {
+      "camera_floor_z": -1.312432622543382,
+      "cameras_with_floor_hit": 205,
+      "cameras": 205,
+      "analysis_floor_z": -1.4671126842498807,
+      "tolerance_m": 0.08,
+      "rebuilt": true,
+      "new_floor_z": [
+        -1.312432622543382
+      ]
+    },
+    "trajectory": "provided_walkthrough",
+    "annotated_frames": 205,
+    "global_instances": 113,
+    "labelled_instances": 112,
+    "labels": {
+      "window": 37,
+      "chair": 15,
+      "bookshelf": 10,
+      "ventilation grille": 4,
+      "ceiling lamp": 4,
+      "storefront glass window": 3,
+      "ceiling": 3,
+      "book": 3,
+      "wall": 2,
+      "waste bin": 2,
+      "floor": 2,
+      "window frame": 1,
+      "floor mat": 1,
+      "display publication": 1,
+      "bag": 1,
+      "glass door": 1,
+      "pavement": 1,
+      "floor-standing air conditioner": 1,
+      "television": 1,
+      "carrying case": 1,
+      "brochure display rack": 1,
+      "displayed publication": 1,
+      "display sign": 1,
+      "door closer": 1,
+      "display rack": 1,
+      "self-service kiosk": 1,
+      "stool": 1,
+      "book return bin": 1,
+      "wall-mounted control panel": 1,
+      "freestanding equipment cabinet": 1,
+      "yellow stool": 1,
+      "display screen": 1,
+      "wall-mounted air vent": 1,
+      "table": 1,
+      "window blind": 1,
+      "magazine display rack": 1,
+      "hanging display monitor": 1,
+      "unknown": 1,
+      "security gate": 1
+    },
+    "validation_passed": true,
+    "review_status": "unreviewed (automatic)",
+    "labelling_model": "gpt-6.1-sol (GPT gateway) + SAM3 (model/sam3.pt)"
+  },
+  "conventions": {
+    "canonical": "leveled Z-up, units = inferred metres (not independently verified); world_to_canonical in analysis.json maps scan coordinates",
+    "camera": "OpenCV camera (+X right, +Y down, +Z forward), camera-to-world matrices; pixel centres at (u+.5, v+.5)",
+    "depth": "mesh first-hit camera-Z depth, uint16 millimetres, 0 = invalid",
+    "ids": "global IDs are per scene integers from fine_instances.npz:point_fine_ids; 0 = unknown",
+    "review": "everything is automatic and marked unreviewed; qa/issues.json lists review leads"
+  },
+  "layers": {
+    "0_source": [
+      {
+        "path": "sources/KS-IN-OE-S-F1_01_202609121414",
+        "exists": true,
+        "bytes": 1231563580,
+        "files": 3,
+        "content": "symlinks to the raw scan: gaussian.ply (3DGS, SH0, ~7.9M Gaussians) + mesh_post1.obj (= mesh_post.obj, vertex colours)",
+        "format": "PLY / OBJ",
+        "raw_dir": "/mnt/cfs/cyh/cvpr_ws/data_pipeline/hesai_dataset/20261019/办公或教育空间/教育科研/KS-IN-OE-S-F1_01_202609121414_图书阅览室"
+      }
+    ],
+    "1_scene_geometry": [
+      {
+        "path": "outputs/KS-IN-OE-S-F1_01_202609121414/analysis.json",
+        "exists": true,
+        "bytes": 16560,
+        "content": "world_to_canonical (scan -Y-up -> leveled Z-up), floors, ceiling gaps, unit status (inferred metres)",
+        "format": "JSON"
+      },
+      {
+        "path": "outputs/KS-IN-OE-S-F1_01_202609121414/floor_0/maps.npz",
+        "exists": true,
+        "bytes": 447998,
+        "content": "navigation grid 0.05 m: observed/inferred floor, obstacles (0.10-1.80 m slab), clearance, navigable (r=0.25 m)",
+        "format": "NPZ [row,col] -> origin+([col,row]+.5)*res"
+      },
+      {
+        "path": "outputs/KS-IN-OE-S-F1_01_202609121414/floor_0/occupancy.pgm",
+        "exists": true,
+        "bytes": 215583,
+        "content": "ROS-style occupancy (+ .yaml)",
+        "format": "PGM/YAML"
+      },
+      {
+        "path": "outputs/KS-IN-OE-S-F1_01_202609121414/floor_0/regions.geojson",
+        "exists": true,
+        "bytes": 91652,
+        "content": "automatic region candidates (watershed on free space; not semantic rooms)",
+        "format": "GeoJSON canonical XY"
+      },
+      {
+        "path": "outputs/KS-IN-OE-S-F1_01_202609121414/floor_0/topdown_3dgs.png",
+        "exists": true,
+        "bytes": 1339852,
+        "content": "top-down 3DGS render (ceiling clipped) + mesh height map",
+        "format": "PNG"
+      },
+      {
+        "path": "outputs/KS-IN-OE-S-F1_01_202609121414/floor_0/panoramas",
+        "exists": true,
+        "bytes": 1899855,
+        "files": 6,
+        "content": "360° equirectangular 3DGS panoramas at region centres + metadata",
+        "format": "JPG 2048x1024 + JSON"
+      },
+      {
+        "path": "outputs/KS-IN-OE-S-F1_01_202609121414/hesai_walkthrough/main",
+        "exists": true,
+        "bytes": 173837278,
+        "files": 210,
+        "content": "trajectory = the scan's own forward walkthrough, aligned: cameras.npz (camera_to_canonical, camera_to_source, K), mesh_depth_mm/, 3DGS re-render check",
+        "format": "NPZ/PNG/JSON",
+        "frames": 205,
+        "render_check_psnr_median_db": 26.41
+      }
+    ],
+    "2_annotations": [
+      {
+        "path": "auto/KS-IN-OE-S-F1_01_202609121414/global_instances/frames.json",
+        "exists": true,
+        "bytes": 313049,
+        "content": "frame index of the annotated clip: image, mesh depth, K, camera_to_canonical, timestamp",
+        "format": "JSON"
+      },
+      {
+        "path": "auto/KS-IN-OE-S-F1_01_202609121414/global_instances/frames",
+        "exists": true,
+        "bytes": 90696853,
+        "files": 205,
+        "content": "annotated RGB frames (JPEG q92 of the walkthrough PNGs)",
+        "format": "JPG"
+      },
+      {
+        "path": "auto/KS-IN-OE-S-F1_01_202609121414/global_instances/global_instances.json",
+        "exists": true,
+        "bytes": 239783,
+        "content": "3D object instances: global_id, semantic_label (+fine_label, vote details), category thing/stuff, observed-surface AABB, best view",
+        "format": "JSON canonical metres"
+      },
+      {
+        "path": "auto/KS-IN-OE-S-F1_01_202609121414/global_instances/fine_instances.npz",
+        "exists": true,
+        "bytes": 10864305,
+        "content": "point cloud (4 cm voxels of the mesh) with per-point global ID / superpoint ID — the source of truth for IDs",
+        "format": "NPZ"
+      },
+      {
+        "path": "auto/KS-IN-OE-S-F1_01_202609121414/global_instances/labeled_points.ply",
+        "exists": true,
+        "bytes": 15077460,
+        "content": "same point cloud with instance colours, global_id, semantic_id, superpoint_id",
+        "format": "PLY"
+      },
+      {
+        "path": "auto/KS-IN-OE-S-F1_01_202609121414/global_instances/frame_assignments.json",
+        "exists": true,
+        "bytes": 7710275,
+        "content": "per frame: which global IDs are visible, mask support, purity, accepted flag",
+        "format": "JSON"
+      },
+      {
+        "path": "auto/KS-IN-OE-S-F1_01_202609121414/global_instances/rendered",
+        "exists": true,
+        "bytes": 211633132,
+        "files": 1230,
+        "content": "per frame numeric instance / semantic masks (uint16 PNG; 0 = unknown) + colour/overlay visualisations",
+        "format": "PNG"
+      },
+      {
+        "path": "auto/KS-IN-OE-S-F1_01_202609121414/global_instances/semantic_registry.json",
+        "exists": true,
+        "bytes": 2754,
+        "content": "semantic_id <-> label vocabulary",
+        "format": "JSON"
+      },
+      {
+        "path": "auto/KS-IN-OE-S-F1_01_202609121414/global_instances/descriptions.json",
+        "exists": true,
+        "bytes": 467555,
+        "content": "GPT (gpt-6.1-sol) text: level1 per-frame description with visible IDs, level2 adjacent-frame change description",
+        "format": "JSON",
+        "level1": 205,
+        "level2": 204
+      },
+      {
+        "path": "auto/KS-IN-OE-S-F1_01_202609121414/global_instances/frame_qa",
+        "exists": true,
+        "bytes": 45333543,
+        "files": 509,
+        "content": "single-frame five-level QA (recognition, attributes, relative position, world coordinates, camera distance) grounded on measured facts",
+        "format": "JSON",
+        "questions": 1025,
+        "answer_status": {
+          "answerable": 1025
+        }
+      },
+      {
+        "path": "auto/KS-IN-OE-S-F1_01_202609121414/global_instances/videos",
+        "exists": true,
+        "bytes": 75791785,
+        "files": 5,
+        "content": "per-clip rgb / overlay / instance / semantic videos",
+        "format": "MP4"
+      },
+      {
+        "path": "auto/KS-IN-OE-S-F1_01_202609121414/global_instances/qa",
+        "exists": true,
+        "bytes": 32312411,
+        "files": 8,
+        "content": "automatic QA evidence: conflicts, reprojection metrics, issue list for human review",
+        "format": "CSV/JSON"
+      },
+      {
+        "path": "auto/KS-IN-OE-S-F1_01_202609121414/global_instances/evidence",
+        "exists": true,
+        "bytes": 66330707,
+        "files": 397,
+        "content": "every GPT request/response with image hashes and actual model (no keys)",
+        "format": "JSON"
+      }
+    ],
+    "3_evaluation": [
+      {
+        "path": "evaluate1/cases/KS-IN-OE-S-F1_01_202609121414",
+        "exists": true,
+        "bytes": 20995527,
+        "files": 210,
+        "content": "evaluate1 case: 10 input frames, 6 keypoint revisits (3 actions + 3 inverses), trajectory/cameras for rendering a 4DGS, object masks, scene text",
+        "format": "JSON/NPZ/PNG"
+      }
+    ]
+  }
+}

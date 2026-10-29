@@ -1,0 +1,470 @@
+{
+ "stages": [
+  "upstream",
+  "3d_geometry",
+  "trajectory",
+  "3d_annotation",
+  "evaluation"
+ ],
+ "stage_zh": {
+  "upstream": "上游：海塞扫描 + 董婷漫游输出",
+  "3d_geometry": "3D 几何",
+  "trajectory": "轨迹",
+  "3d_annotation": "3D 标注",
+  "evaluation": "评测 evaluate1"
+ },
+ "ops": [
+  {
+   "name": "upstream.scan",
+   "stage": "upstream",
+   "title": "海塞扫描交付",
+   "inputs": [],
+   "outputs": [
+    "{raw}/gaussian.ply",
+    "{raw}/mesh_post.obj",
+    "{raw}/mesh_post.ply",
+    "{raw}/data.json",
+    "{raw}/cover_image.png"
+   ],
+   "device": "cpu",
+   "when": "always",
+   "call": "—",
+   "external": true,
+   "owner": "海塞",
+   "doc": "Per scene: 3DGS (SH0, ~8M Gaussians, scan frame −Y up), coloured mesh, the scanner's own camera trajectory\n    (data.json: cam2world + timestamps, no images) and a cover image."
+  },
+  {
+   "name": "upstream.manyou_probe",
+   "stage": "upstream",
+   "title": "董婷 manyou：自由空间探针 + 低清试拍评分",
+   "inputs": [
+    "{raw}/gaussian.ply"
+   ],
+   "outputs": [
+    "{raw}/manyou_videos/main_walkthrough/probes.json",
+    ".../adaptive_parameters.json",
+    ".../lowres/*.png",
+    ".../metrics.json"
+   ],
+   "device": "gpu",
+   "when": "always",
+   "call": "manyou src/main_walkthrough2/generate_main.py",
+   "external": true,
+   "owner": "董婷",
+   "doc": "Adaptive clearance/voxel from the PLY's 5–95% box; safe stand points between opaque Gaussian surfaces, several\n    headings each; low-res renders scored by valid depth, contrast, gradient and foreground fill."
+  },
+  {
+   "name": "upstream.manyou_walkthrough",
+   "stage": "upstream",
+   "title": "董婷 manyou：主漫游路线 + 高清渲染",
+   "inputs": [
+    ".../probes.json",
+    ".../metrics.json",
+    "{raw}/gaussian.ply"
+   ],
+   "outputs": [
+    "{raw}/manyou_videos/main_walkthrough/poses.json",
+    ".../frames_hd/*.png (1536×1024)",
+    ".../walkthrough.mp4 (12 fps)",
+    ".../preview_quality/",
+    ".../quality_gate.json"
+   ],
+   "device": "gpu",
+   "when": "always",
+   "call": "manyou src/main_walkthrough/generate.py + render_v1 + video_v1",
+   "external": true,
+   "owner": "董婷",
+   "doc": "Best-scoring safe headings become anchors, connected with clearance checks and interpolated into one continuous\n    route (c2w in the scan frame, OpenCV, fov_y 70°), then rendered in HD and encoded."
+  },
+  {
+   "name": "upstream.capture_aware",
+   "stage": "upstream",
+   "title": "采集感知漫游 videos/",
+   "inputs": [
+    "{raw}/data.json",
+    "{raw}/gaussian.ply"
+   ],
+   "outputs": [
+    "{raw}/videos/poses.json (~2300 poses)",
+    "{raw}/videos/walkthrough.mp4",
+    "{raw}/videos/quality_repair.json"
+   ],
+   "device": "gpu",
+   "when": "always",
+   "call": "manyou capture-aware planner",
+   "external": true,
+   "owner": "董婷",
+   "doc": "Follows the scanner's real trajectory (data.json) interpolated to video rate; blurred / badly exposed frames\n    are dropped (quality_repair.json)."
+  },
+  {
+   "name": "scan.source",
+   "stage": "3d_geometry",
+   "title": "登记扫描",
+   "inputs": [
+    "{raw}/gaussian.ply",
+    "{raw}/mesh_post.obj"
+   ],
+   "outputs": [
+    "sources/{key}/gaussian.ply",
+    "sources/{key}/mesh_post1.obj",
+    "sources/{key}/source.json"
+   ],
+   "device": "cpu",
+   "when": "always",
+   "call": "ops3d.run('scan.source', scene)",
+   "external": false,
+   "owner": "anno_eval",
+   "doc": "Links the raw scan under a stable ASCII key (category path and Chinese label kept in source.json)."
+  },
+  {
+   "name": "geom.analyze",
+   "stage": "3d_geometry",
+   "title": "调平 · 楼层 · 可通行图 · 区域",
+   "inputs": [
+    "sources/{key}/mesh_post1.obj",
+    "sources/{key}/gaussian.ply"
+   ],
+   "outputs": [
+    "outputs/{key}/analysis.json (world_to_canonical, floors)",
+    "outputs/{key}/mesh_cache.npz",
+    "outputs/{key}/alignment.json",
+    "outputs/{key}/floor_k/maps.npz (0.05 m, r=0.25 m)",
+    "outputs/{key}/floor_k/regions.geojson",
+    "outputs/{key}/floor_k/annotation_routes.json"
+   ],
+   "device": "cpu",
+   "when": "always",
+   "call": "ops3d.run('geom.analyze', scene)",
+   "external": false,
+   "owner": "anno_eval",
+   "doc": "−Y-up scan → leveled Z-up canonical frame (dominant floor normal); floor/ceiling peaks; navigation grid from\n    the 0.10–1.80 m obstacle slab; watershed region candidates; A* routes through region centres (planned only)."
+  },
+  {
+   "name": "geom.floor_check",
+   "stage": "3d_geometry",
+   "title": "楼层实测（漫游相机正下方）",
+   "inputs": [
+    "{raw}/manyou_videos/main_walkthrough/poses.json",
+    "outputs/{key}/mesh_cache.npz",
+    "outputs/{key}/analysis.json"
+   ],
+   "outputs": [
+    "outputs/{key}/analysis.json:walkthrough_floor_check",
+    "outputs/{key}/floor_k/maps.npz (rebuilt if > 8 cm off)"
+   ],
+   "device": "cpu",
+   "when": "扫描自带漫游时",
+   "call": "ops3d.run('geom.floor_check', scene)",
+   "external": false,
+   "owner": "anno_eval",
+   "doc": "Down-rays from the walkthrough cameras measure the walked floor; when it differs from the chosen plane by more\n    than 8 cm the floor maps are rebuilt at that height (leveling unchanged)."
+  },
+  {
+   "name": "geom.render_views",
+   "stage": "3d_geometry",
+   "title": "俯视图 · 全景 · 深度一致性",
+   "inputs": [
+    "outputs/{key}/analysis.json",
+    "outputs/{key}/floor_k/maps.npz",
+    "outputs/{key}/floor_k/regions.json",
+    "sources/{key}/gaussian.ply"
+   ],
+   "outputs": [
+    "outputs/{key}/floor_k/topdown_3dgs.png",
+    "outputs/{key}/floor_k/panoramas/*.jpg (2048×1024)",
+    "outputs/{key}/floor_k/alignment_views/",
+    "outputs/{key}/floor_k/depth_alignment.json"
+   ],
+   "device": "gpu",
+   "when": "always",
+   "call": "ops3d.run('geom.render_views', scene)",
+   "external": false,
+   "owner": "anno_eval",
+   "doc": "3DGS top-down (ceiling clipped), 360° panoramas at region centres, 3DGS-vs-mesh depth agreement views."
+  },
+  {
+   "name": "traj.align_walkthrough",
+   "stage": "trajectory",
+   "title": "对齐自带漫游",
+   "inputs": [
+    "{raw}/manyou_videos/main_walkthrough/poses.json",
+    "{raw}/manyou_videos/main_walkthrough/frames_hd/*.png",
+    "outputs/{key}/analysis.json",
+    "outputs/{key}/mesh_cache.npz",
+    "sources/{key}/gaussian.ply"
+   ],
+   "outputs": [
+    "outputs/{key}/hesai_walkthrough/main/cameras.npz (camera_to_canonical, camera_to_source, K)",
+    "outputs/{key}/hesai_walkthrough/main/mesh_depth_mm/*.png",
+    "outputs/{key}/hesai_walkthrough/main/metadata.json (PSNR check)"
+   ],
+   "device": "gpu",
+   "when": "扫描自带漫游时（86/90）",
+   "call": "ops3d.run('traj.align_walkthrough', scene)",
+   "external": false,
+   "owner": "anno_eval",
+   "doc": "poses.json c2w (scan frame) → canonical; K from fov_y; same-camera mesh depth; every frame re-rendered from the\n    3DGS and compared to frames_hd (pilot median PSNR 26.4 dB) to prove pose and intrinsics."
+  },
+  {
+   "name": "traj.astar_walkthrough",
+   "stage": "trajectory",
+   "title": "A* 规划漫游（兜底）",
+   "inputs": [
+    "outputs/{key}/floor_k/maps.npz",
+    "outputs/{key}/floor_k/annotation_routes.json",
+    "sources/{key}/gaussian.ply",
+    "outputs/{key}/mesh_cache.npz"
+   ],
+   "outputs": [
+    "outputs/{key}/floor_k/annotation_walkthrough/component_n/{rgb.mp4, mesh_depth_mm/, cameras.npz, metadata.json}"
+   ],
+   "device": "gpu",
+   "when": "扫描没有自带漫游时（4/90）",
+   "call": "ops3d.run('traj.astar_walkthrough', scene)",
+   "external": false,
+   "owner": "anno_eval",
+   "doc": "Collision-checked A* through region centres per connected component, smoothed, rendered at 1.5 m camera height\n    (960×540, 8 fps) with mesh depth."
+  },
+  {
+   "name": "anno.frames",
+   "stage": "3d_annotation",
+   "title": "标注帧索引",
+   "inputs": [
+    "outputs/{key}/hesai_walkthrough/main/ 或 annotation_walkthrough/"
+   ],
+   "outputs": [
+    "auto/{key}/global_instances/frames.json (rgb, depth, K, camera_to_canonical)",
+    "auto/{key}/global_instances/frames/<clip>/*.jpg"
+   ],
+   "device": "cpu",
+   "when": "always",
+   "call": "ops3d.run('anno.frames', scene)",
+   "external": false,
+   "owner": "anno_eval",
+   "doc": "One record per trajectory frame: image, aligned mesh depth, intrinsics, canonical pose, timestamp."
+  },
+  {
+   "name": "anno.inventory",
+   "stage": "3d_annotation",
+   "title": "GPT 逐帧类别清单",
+   "inputs": [
+    "auto/{key}/global_instances/frames/"
+   ],
+   "outputs": [
+    "auto/{key}/global_instances/concepts.json (类别 + SAM3 提示词)",
+    "auto/{key}/global_instances/evidence/gpt_inventory/"
+   ],
+   "device": "gpt",
+   "when": "always",
+   "call": "ops3d.run('anno.inventory', scene)",
+   "external": false,
+   "owner": "anno_eval",
+   "doc": "gpt-6.1-sol lists every visible segmentable type per frame with 1–3 SAM3 prompts (thing / stuff)."
+  },
+  {
+   "name": "anno.sam3_segment",
+   "stage": "3d_annotation",
+   "title": "SAM3 分割",
+   "inputs": [
+    "auto/{key}/global_instances/frames/",
+    "auto/{key}/global_instances/concepts.json"
+   ],
+   "outputs": [
+    "auto/{key}/global_instances/masks/<clip>/*.npz|json (互斥实例 mask)"
+   ],
+   "device": "gpu",
+   "when": "always",
+   "call": "hesai/annotate.sh 启停 SAM3 服务后 ops3d.run(\"anno.sam3_segment\", scene)",
+   "external": false,
+   "owner": "anno_eval",
+   "doc": "SAM3 text-prompted instances per frame; score ≥ 0.40, area ≥ 80 px, NMS IoU 0.80, exclusive pixel ownership.\n    Needs SAM3 workers (GLOBAL_SAM_URLS); hesai/annotate.sh starts them on the GPU only for this step."
+  },
+  {
+   "name": "anno.superpoints",
+   "stage": "3d_annotation",
+   "title": "超点 + z-buffer 投影",
+   "inputs": [
+    "outputs/{key}/mesh_cache.npz",
+    "outputs/{key}/analysis.json",
+    "auto/{key}/global_instances/frames.json"
+   ],
+   "outputs": [
+    "auto/{key}/global_instances/superpoints.npz",
+    "auto/{key}/global_instances/projections/<clip>/*.npz (每帧可见点 + 像素)"
+   ],
+   "device": "cpu",
+   "when": "always",
+   "call": "ops3d.run('anno.superpoints', scene)",
+   "external": false,
+   "owner": "anno_eval",
+   "doc": "Mesh vertices voxelised at 4 cm; FH segmentation on a coloured kNN graph (≤ 300 points, ≤ 0.65 m); per frame\n    the depth-consistent visible points and their pixels."
+  },
+  {
+   "name": "anno.instances_3d",
+   "stage": "3d_annotation",
+   "title": "3D 实例融合",
+   "inputs": [
+    "masks/",
+    "superpoints.npz",
+    "projections/"
+   ],
+   "outputs": [
+    "auto/{key}/global_instances/proposals.npz",
+    "coarse_instances.npz",
+    "fine_instances.npz (points, point_fine_ids)"
+   ],
+   "device": "cpu",
+   "when": "always",
+   "call": "ops3d.run('anno.instances_3d', scene)",
+   "external": false,
+   "owner": "anno_eval",
+   "doc": "Mask → superpoint proposals; merge by shared superpoints with cannot-link sets; fine boundary migration with\n    ≥ 2 independent views. fine_instances.npz:point_fine_ids is the source of every global ID."
+  },
+  {
+   "name": "anno.export",
+   "stage": "3d_annotation",
+   "title": "多视角投票 → GPT 补 unknown → 剔除碎片 → 逐帧 PNG",
+   "inputs": [
+    "fine_instances.npz",
+    "masks/",
+    "projections/",
+    "frames/"
+   ],
+   "outputs": [
+    "auto/{key}/global_instances/global_instances.json (类别, fine_label, AABB, dropped_instances)",
+    "frame_assignments.json",
+    "relabel_unknown.json",
+    "rendered/<clip>/{instance,semantic}/*.png (uint16)",
+    "labeled_points.ply",
+    "videos/"
+   ],
+   "device": "gpt",
+   "when": "always",
+   "call": "ops3d.run('anno.export', scene)",
+   "external": false,
+   "owner": "anno_eval",
+   "doc": "Re-project fine IDs into every mask; vote canonicalised labels across views (margin 0.15, ≥ 2 views); unknowns\n    → one gpt-6.1-sol look at outlined views (accept: visible, single object, conf ≥ 0.6); instances no frame shows are\n    dropped (IDs → 0); numeric instance/semantic PNGs, videos and labelled point cloud."
+  },
+  {
+   "name": "anno.text",
+   "stage": "3d_annotation",
+   "title": "文字层（可选）",
+   "inputs": [
+    "global_instances.json",
+    "frame_assignments.json",
+    "frames/"
+   ],
+   "outputs": [
+    "auto/{key}/global_instances/descriptions.json",
+    "auto/{key}/global_instances/frame_qa/ (五档问答)"
+   ],
+   "device": "gpt",
+   "when": "WITH_TEXT=1",
+   "call": "ops3d.run('anno.text', scene)",
+   "external": false,
+   "owner": "anno_eval",
+   "doc": "Per-frame and adjacent-frame descriptions; single-frame five-level QA grounded on measured facts."
+  },
+  {
+   "name": "anno.verify",
+   "stage": "3d_annotation",
+   "title": "校验 + 场景清单",
+   "inputs": [
+    "auto/{key}/global_instances/*"
+   ],
+   "outputs": [
+    "auto/{key}/global_instances/validation.json",
+    "auto/{key}/global_instances/qa/issues.json",
+    "scenes/{key}/{manifest.json, README.md}"
+   ],
+   "device": "cpu",
+   "when": "always",
+   "call": "ops3d.run('anno.verify', scene)",
+   "external": false,
+   "owner": "anno_eval",
+   "doc": "Uint16 labels, mask boundaries, ID registry ↔ point cloud, topology, video frame counts, GPT evidence; then the\n    per-scene delivery manifest."
+  },
+  {
+   "name": "eval.case",
+   "stage": "evaluation",
+   "title": "评测 case：10 输入 · 6 关键点 · 3+3 动作",
+   "inputs": [
+    "轨迹 clip",
+    "global_instances.json + rendered/instance",
+    "floor_k/maps.npz",
+    "mesh_cache.npz"
+   ],
+   "outputs": [
+    "evaluate1/cases/{key}/case.json",
+    "evaluate1/cases/{key}/trajectory.json",
+    "evaluate1/cases/{key}/cameras.npz (c2w, K, t)",
+    "evaluate1/cases/{key}/input/ (10 帧真值)",
+    "evaluate1/cases/{key}/objects/ (关键点物体 mask)"
+   ],
+   "device": "gpt",
+   "when": "always",
+   "call": "ops3d.run('eval.case', scene)",
+   "external": false,
+   "owner": "anno_eval",
+   "doc": "Walk the trajectory; at 6 keypoints pause, 3 WBench actions (W/S/A/D 0.4 m, LEFT/RIGHT 30°, UP/DOWN 15°) and\n    their inverses in reverse order back to the exact pose; translations checked against mesh and nav map."
+  },
+  {
+   "name": "eval.render_model",
+   "stage": "evaluation",
+   "title": "被测模型渲染",
+   "inputs": [
+    "evaluate1/cases/{key}/cameras.npz",
+    "被测 4DGS"
+   ],
+   "outputs": [
+    "evaluate1/runs/{key}/<model>/frames/<step>.png",
+    "evaluate1/runs/{key}/<model>/depth/<step>.npy（可选）"
+   ],
+   "device": "gpu",
+   "when": "always",
+   "call": "模型自己渲染；参考：python -m evaluate1.render --case ... --model oracle|ply:<path>",
+   "external": false,
+   "owner": "anno_eval",
+   "doc": "The model renders its 4DGS at every step's pose and time t."
+  },
+  {
+   "name": "eval.score",
+   "stage": "evaluation",
+   "title": "72 个评测算子",
+   "inputs": [
+    "evaluate1/cases/{key}/*",
+    "evaluate1/runs/{key}/<model>/frames/"
+   ],
+   "outputs": [
+    "evaluate1/runs/{key}/<model>/scores.json (每个算子: value, status, raw, per_item)",
+    "scores.md"
+   ],
+   "device": "gpu",
+   "when": "always",
+   "call": "python operators.py run --case ... --frames ...",
+   "external": false,
+   "owner": "anno_eval",
+   "doc": "A 画面质量 · B 输入帧保真 · C 设定遵循 · D 交互遵循 · E 时空一致性 · F 物理合理性 · G 关键点重访 · H R2M 重访记忆."
+  },
+  {
+   "name": "eval.results",
+   "stage": "evaluation",
+   "title": "交付视图",
+   "inputs": [
+    "scenes/{key}/",
+    "evaluate1/cases/{key}/case.json",
+    "scores.json"
+   ],
+   "outputs": [
+    "results/{key}/{annotation.md, case.md, scores_<model>.json|md}",
+    "OPERATORS.md"
+   ],
+   "device": "cpu",
+   "when": "always",
+   "call": "ops3d.run('eval.results', scene)",
+   "external": false,
+   "owner": "anno_eval",
+   "doc": "Collects the scene manifest, case summary and scores into results/ and regenerates the operator catalogue."
+  }
+ ]
+}
